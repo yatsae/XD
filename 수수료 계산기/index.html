@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC 온라인 수수료 계산기</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            color: white;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .calculator {
+            background: #333;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            width: 300px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: none;
+            font-size: 18px;
+        }
+        button {
+            background: orange;
+            color: white;
+            cursor: pointer;
+        }
+        .history {
+            width: 300px;
+            background: #444;
+            padding: 10px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 5px;
+            border-bottom: 1px solid #666;
+        }
+        .preview {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ffcc00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="calculator">
+            <h2>FC 온라인 수수료 계산기</h2>
+            <input type="text" id="amount" maxlength="12" placeholder="판매 금액 입력 (억 단위)" oninput="updatePreview()">
+            <label><input type="checkbox" id="topClass" onchange="updatePreview()"> TOP 클래스 사용 (20%) <span id="topClassPreview" class="preview"></span></label><br>
+            <label><input type="checkbox" id="pcBang" onchange="updatePreview()"> PC방 사용 (30%) <span id="pcBangPreview" class="preview"></span></label><br>
+            <label><input type="checkbox" id="coupon" onchange="updatePreview()"> 수수료 쿠폰 사용 (50%) <span id="couponPreview" class="preview"></span></label><br>
+            <div id="reducedAmountPreview" class="preview"></div> <!-- 감면 받지 않은 금액 미리 보기 추가 -->
+            <button onclick="calculateFee()">계산하기</button>
+            <h3 id="result">받을 금액: </h3>
+        </div>
+        <div class="history" id="history">
+            <h3>계산 기록</h3>
+        </div>
+    </div>
+
+    <script>
+        // 숫자 값을 한글 단위로 변환하는 함수 (억 단위로 기준)
+        function numberToKorean(number) {
+            if (number < 10000) { // 만원 이하
+                return Math.round(number) + "만원"; // 반올림하여 표시
+            }
+            if (number < 100000000) { // 억
+                return Math.round(number / 10000) + "억"; // 반올림하여 표시
+            }
+            if (number < 1000000000) { // 조
+                return Math.round(number / 100000000) + "조"; // 반올림하여 표시
+            }
+            if (number < 10000000000) { // 경
+                return Math.round(number / 1000000000) + "경"; // 반올림하여 표시
+            }
+            return number.toLocaleString(); // 그 이상은 숫자 표시
+        }
+
+        // 인풋 값을 억 단위로 계산
+        function updatePreview() {
+            let amount = Number(document.querySelector('#amount').value.replace(/[^0-9]/g, '')) * 100000000; // '억' 단위로 입력값 처리
+            if (!amount) {
+                document.querySelector('#topClassPreview').innerText = "";
+                document.querySelector('#pcBangPreview').innerText = "";
+                document.querySelector('#couponPreview').innerText = "";
+                document.querySelector('#reducedAmountPreview').innerText = "";
+                return;
+            }
+
+            let refundBase = amount * 0.4;
+
+            // 감면 금액 미리 보기 (억 단위)
+            let reducedAmount = amount * 0.6;
+            document.querySelector('#reducedAmountPreview').innerText = `감면 받지 않은 금액: ${numberToKorean(reducedAmount / 100000000)}`;
+
+            // TOP 클래스 체크 시 감면 금액 (20%)
+            document.querySelector('#topClassPreview').innerText = document.querySelector('#topClass').checked ? `(+${numberToKorean(refundBase * 0.2 / 100000000)})` : "";
+            // PC방 체크 시 감면 금액 (30%)
+            document.querySelector('#pcBangPreview').innerText = document.querySelector('#pcBang').checked ? `(+${numberToKorean(refundBase * 0.3 / 100000000)})` : "";
+            // 수수료 쿠폰 체크 시 감면 금액 (50%)
+            document.querySelector('#couponPreview').innerText = document.querySelector('#coupon').checked ? `(+${numberToKorean(refundBase * 0.5 / 100000000)})` : "";
+        }
+
+        function calculateFee() {
+            let amount = Number(document.querySelector('#amount').value.replace(/[^0-9]/g, '')) * 100000000; // '억' 단위로 입력값 처리
+            if (!amount) return;
+
+            let baseAmount = amount * 0.6;
+            let refundBase = amount * 0.4;
+            let refundRate = 0;
+
+            if (document.querySelector('#topClass').checked) refundRate += 0.2;
+            if (document.querySelector('#pcBang').checked) refundRate += 0.3;
+            if (document.querySelector('#coupon').checked) refundRate += 0.5;
+
+            let finalAmount = baseAmount + (refundBase * refundRate);
+            let resultText = `받을 금액: ${numberToKorean(finalAmount / 100000000)}`;
+            document.querySelector('#result').innerText = resultText;
+
+            // 기록 추가
+            let history = document.querySelector('#history');
+            let historyItem = document.createElement('div');
+            historyItem.classList.add('history-item');
+            historyItem.innerText = `판매 금액: ${numberToKorean(amount / 100000000)} → ${resultText}`;
+            history.prepend(historyItem);
+        }
+    </script>
+</body>
+</html>
